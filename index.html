@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lucky Number</title>
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: ledger workbench — left key-in rail, right summary in three type columns, cut rounds below */
+:root{
+  --bg:#eef1ef; --panel:#fbfcfb; --ink:#17201d; --muted:#5d6a65; --line:#d3dbd7; --soft:#e4eae7;
+  --accent:#0f6b5c; --accent-ink:#ffffff; --accent-soft:#d6ebe6;
+  --over:#b4232c; --over-soft:#f8dfe0; --pend:#a35d00; --pend-soft:#fbecd3; --sent:#3b5ea8; --sent-soft:#e0e7f6;
+  --key-bg:#d3ebe4; --key-line:#8fc2b5; --key-field:#ffffff;
+  --display:"Chakra Petch","IBM Plex Sans Thai",system-ui,sans-serif;
+  --body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111715; --panel:#18201d; --ink:#e6ece9; --muted:#93a29c; --line:#2c3833; --soft:#212b27;
+  --accent:#3fb39c; --accent-ink:#06201b; --accent-soft:#1d3a33;
+  --over:#f0717a; --over-soft:#3d1d21; --pend:#f0b25c; --pend-soft:#3a2b16; --sent:#8fb0f0; --sent-soft:#1f2a42;
+  --key-bg:#123a32; --key-line:#2f7465; --key-field:#0a1714; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --panel:#18201d; --ink:#e6ece9; --muted:#93a29c; --line:#2c3833; --soft:#212b27;
+  --accent:#3fb39c; --accent-ink:#06201b; --accent-soft:#1d3a33;
+  --over:#f0717a; --over-soft:#3d1d21; --pend:#f0b25c; --pend-soft:#3a2b16; --sent:#8fb0f0; --sent-soft:#1f2a42;
+  --key-bg:#123a32; --key-line:#2f7465; --key-field:#0a1714; color-scheme:dark}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:14px;line-height:1.5;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px}
+*{box-sizing:border-box}
+button,input,select{font:inherit;color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:14px}
+.brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.01em;margin:0}
+.period{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 6px 4px 12px}
+.period label{font-size:12px;color:var(--muted)}
+.period input{border:0;background:transparent;font-weight:600;width:170px;padding:4px 0}
+.limits{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:auto}
+.limits .lbl{font-size:12px;color:var(--muted);text-transform:none}
+.lim{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.lim span{font-size:12px;color:var(--muted);white-space:nowrap}
+.lim input{width:78px;border:0;background:transparent;text-align:right;font-family:var(--mono);font-weight:600;padding:3px 0}
+.save{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:120px}
+.save i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.save[data-s="saved"] i{background:var(--accent)} .save[data-s="saving"] i,.save[data-s="pending"] i{background:var(--pend)} .save[data-s="error"] i{background:var(--over)}
+
+.grid{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+h2{font-family:var(--display);font-size:15px;font-weight:600;margin:0;letter-spacing:.02em}
+
+/* entry */
+.entry{padding:16px;position:relative;background:var(--key-bg);border:2px solid var(--key-line)}
+.entry .bignum{background:var(--key-field);border-color:var(--key-line)}
+.entry .price{background:var(--key-field);border-color:var(--key-line)}
+.entry .price.active{background:var(--key-field);border:2px solid var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent);padding:9px}
+.entry .price.off{opacity:.35}
+.entry .keys,.entry .modehint,.entry .field label,.entry h2 small{color:var(--ink);opacity:.75}
+.entry h2{margin-bottom:12px;display:flex;justify-content:space-between;align-items:baseline}
+.entry h2 small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;color:var(--muted);letter-spacing:.02em}
+.bignum{width:100%;font-family:var(--mono);font-size:44px;font-weight:600;letter-spacing:.25em;text-align:center;padding:6px 0 6px .25em;border:2px solid var(--line);border-radius:10px;background:var(--bg)}
+.bignum:focus{border-color:var(--accent);outline:none;background:var(--panel)}
+.modehint{font-size:12px;color:var(--muted);text-align:center;min-height:18px;margin-top:4px}
+.modehint b{color:var(--accent)}
+.prices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.price{display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:10px;transition:opacity .15s,border-color .15s}
+.price.tod{grid-column:1 / -1}
+.price label{font-size:13px;font-weight:600;display:flex;justify-content:space-between}
+.price label kbd{font-weight:400}
+.price input{width:100%;font-family:var(--mono);font-size:24px;font-weight:600;text-align:right;border:0;border-bottom:2px solid var(--line);background:transparent;padding:2px 2px}
+.price input:focus{outline:none;border-bottom-color:var(--accent)}
+.price.active{border-color:var(--accent);background:var(--accent-soft)}
+.price.off{opacity:.38}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--panel);color:var(--muted)}
+.keys{margin-top:12px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 12px}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+.loading{position:absolute;inset:0;background:color-mix(in srgb,var(--panel) 88%,transparent);display:grid;place-items:center;border-radius:10px;font-weight:500;color:var(--muted)}
+
+.list{margin-top:16px;padding:12px 0 4px}
+.listhead{display:flex;justify-content:space-between;align-items:center;padding:0 16px 8px;gap:8px}
+.listhead span{font-size:12px;color:var(--muted)}
+.scroll{overflow:auto;max-height:46vh}
+table{border-collapse:collapse;width:100%}
+th{position:sticky;top:0;background:var(--panel);font-size:11px;font-weight:600;color:var(--muted);text-align:right;padding:6px 10px;border-bottom:1px solid var(--line);letter-spacing:.03em;z-index:1}
+td{padding:5px 10px;border-bottom:1px solid var(--soft);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--muted)}
+.tag.tod{background:var(--pend-soft);color:var(--pend)} .tag.top{background:var(--accent-soft);color:var(--accent)} .tag.bot{background:var(--sent-soft);color:var(--sent)}
+.x{border:0;background:transparent;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px}
+.x:hover{color:var(--over);background:var(--over-soft)}
+td.en{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.06em}
+tr.fresh td{background:var(--accent-soft);padding-block:10px;border-bottom-color:var(--panel)}
+tr.fresh td.en{font-size:30px;line-height:1.1;color:var(--accent)}
+tr.fresh td.ep{font-size:24px;font-weight:600}
+tr.fresh .tag{font-size:14px;padding:3px 10px}
+tr.fresh:first-child td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
+tr.fresh+tr.fresh td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
+.empty{padding:22px 16px;color:var(--muted);font-size:13px;text-align:center}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel);padding:10px 14px}
+.stat span{font-size:12px;color:var(--muted);display:block}
+.stat b{font-family:var(--mono);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat.p b{color:var(--pend)} .stat.s b{color:var(--sent)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:14px 0 10px}
+.toolbar .grow{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary kbd{background:transparent;color:inherit;border-color:color-mix(in srgb,var(--accent-ink) 50%,transparent)}
+.btn.danger{color:var(--over)}
+.btn.danger.solid{background:var(--over);border-color:var(--over);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.search{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;width:120px;font-family:var(--mono)}
+select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 8px}
+.chk{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:1100px){.sum{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
+.col{min-width:0;padding-top:12px}
+.colhead{padding:0 12px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.colhead span{font-size:12px;color:var(--muted)}
+.col .scroll{max-height:52vh}
+td.n{font-family:var(--mono);font-weight:600;font-size:15px;letter-spacing:.06em}
+td.amt{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.bar{background-image:linear-gradient(90deg,var(--accent-soft),var(--accent-soft));background-repeat:no-repeat;background-size:var(--w,0%) 100%;background-position:right}
+tr.over td.bar{background-image:linear-gradient(90deg,var(--over-soft),var(--over-soft));color:var(--over);font-weight:600}
+tr.justin td{background-color:var(--accent-soft);padding-block:9px;border-bottom:2px solid var(--accent)}
+tr.justin td.n{font-size:22px;color:var(--accent)}
+tr.justin td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
+.plus{display:inline-block;margin-right:6px;font-family:var(--mono);font-size:12px;font-weight:600;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 7px;vertical-align:1px}
+td.sent{color:var(--sent)}
+td.pend{color:var(--pend);font-weight:600}
+td.dim{color:var(--line)}
+
+.cuts{margin-top:16px;padding:14px 0 6px}
+.cutshead{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:0 16px 10px}
+.round{border-top:1px solid var(--line)}
+.roundrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 16px}
+.roundrow .rn{font-family:var(--display);font-weight:700;font-size:15px;min-width:100px}
+.roundrow .meta{color:var(--muted);font-size:13px}
+.roundrow .tot{font-family:var(--mono);font-weight:600;color:var(--sent);margin-left:auto}
+.rounddetail{padding:0 16px 14px}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.three{grid-template-columns:minmax(0,1fr)}}
+.three{align-items:start}
+.mini{min-width:0}
+.mini .scroll{max-height:320px;border:2px solid var(--muted);border-radius:6px}
+.rt{border-collapse:collapse;width:100%}
+.rt th,.rt td{border:1px solid var(--muted);padding:7px 12px;white-space:nowrap}
+.rt thead{position:sticky;top:0;z-index:1}
+.rt thead th{position:static;background:var(--panel);color:var(--ink);text-align:center}
+.rt thead tr:first-child th{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.02em;background:var(--accent-soft);color:var(--accent);border-bottom:2px solid var(--muted)}
+.rt thead tr:nth-child(2) th{font-size:12px;font-weight:600;color:var(--muted);background:var(--soft)}
+.rt td.n{text-align:center;font-family:var(--mono);font-weight:600;font-size:17px;letter-spacing:.08em}
+.rt td.amt{text-align:right;font-family:var(--mono);font-size:16px}
+.rt tbody tr:nth-child(even) td{background:var(--soft)}
+.rt tfoot td{position:sticky;bottom:0;background:var(--sent-soft);color:var(--sent);font-weight:700;font-size:16px;border-top:2px solid var(--muted)}
+.rt tfoot td:first-child{text-align:center;font-family:var(--body)}
+.rt tfoot td.amt{font-family:var(--mono)}
+.rth{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rtt{font-size:17px}
+.rtd{font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink);background:var(--panel);border:1px solid var(--muted);border-radius:6px;padding:2px 8px;letter-spacing:0;white-space:nowrap}
+.rt td.none{text-align:center;color:var(--muted);font-size:13px}
+
+/* modal */
+.veil{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 45%,transparent);display:grid;place-items:center;z-index:20;padding:16px}
+.modal{background:var(--panel);border-radius:12px;border:1px solid var(--line);width:min(860px,100%);max-height:88vh;overflow:auto;padding:20px}
+.modal h2{font-size:19px;margin-bottom:6px}
+.modal p{margin:0 0 14px;color:var(--muted)}
+.modal .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal .big{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--sent)}
+.modal input[type=text]{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);width:100%}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;z-index:30;max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 class="brand">Lucky Number</h1>
+  <div class="period"><label for="periodLabel">งวด</label><input id="periodLabel" type="text" autocomplete="off"></div>
+  <div class="limits" aria-label="ยอดตัดเก็บต่อเลข">
+    <span class="lbl">เก็บสูงสุดต่อเลข</span>
+    <div class="lim"><span>3 ตัวโต๊ด</span><input id="lim-tod" class="num" inputmode="numeric"></div>
+    <div class="lim"><span>2 ตัวบน</span><input id="lim-top" class="num" inputmode="numeric"></div>
+    <div class="lim"><span>2 ตัวล่าง</span><input id="lim-bot" class="num" inputmode="numeric"></div>
+  </div>
+  <div class="save" id="saveState" data-s="loading"><i></i><span>กำลังโหลด…</span></div>
+</header>
+
+<div class="grid">
+  <div>
+    <section class="card entry" id="entryCard">
+      <h2>Key <small>F2 กลับมาที่ช่องเลข</small></h2>
+      <div class="field">
+        <label for="numIn">เลข (2 หรือ 3 หลัก)</label>
+        <input id="numIn" class="bignum" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="––">
+        <div class="modehint" id="modeHint">พิมพ์เลข 2 หรือ 3 หลัก แล้วกด Enter</div>
+      </div>
+      <div class="prices">
+        <div class="price" id="box-top"><label for="pTop">2 ตัวบน <kbd>Tab = ไปล่าง</kbd></label><input id="pTop" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="price" id="box-bot"><label for="pBot">2 ตัวล่าง <kbd>Enter</kbd></label><input id="pBot" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="price tod" id="box-rev"><label for="pRev"><span>กลับ <span id="revNum" class="num" style="color:var(--accent)"></span> <small style="font-weight:400;color:var(--muted)">เฉพาะช่องที่ใส่ราคาไว้</small></span> <kbd>Enter = ลงรายการ</kbd></label><input id="pRev" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+        <div class="price tod" id="box-tod"><label for="pTod">3 ตัวโต๊ด <kbd>Enter = ลงรายการ</kbd></label><input id="pTod" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+      </div>
+      <div class="keys"><span><kbd>/</kbd> ลงรายการพร้อมกลับเลข ราคาเดียวกันทันที (เลข 2 ตัว)</span><span>เลขผิด กด <kbd>Enter</kbd> ผ่านช่องราคาว่าง ๆ จะกลับมาที่ช่องเลขโดยไม่บันทึก</span><span><kbd>+</kbd> ใช้ราคาเดิมของช่องนั้น</span><span><kbd>Esc</kbd> ล้างเลขทันที</span></div>
+      <div class="loading" id="loadingVeil">กำลังโหลดข้อมูลงวด…</div>
+    </section>
+
+    <section class="card list">
+      <div class="listhead"><h2>รายการที่คีย์</h2><span id="entryCount">0 รายการ</span></div>
+      <div class="scroll"><table><thead><tr><th>เลข</th><th>ประเภท</th><th>ราคา</th><th>เวลา</th><th></th></tr></thead><tbody id="entryBody"></tbody></table></div>
+      <div class="empty" id="entryEmpty">ยังไม่มีรายการในงวดนี้ เริ่มพิมพ์เลขในช่องด้านบนได้เลย<br><button class="btn" id="demoBtn" style="margin-top:10px">ลองด้วยข้อมูลตัวอย่าง</button></div>
+    </section>
+  </div>
+
+  <div style="min-width:0">
+    <div class="stats">
+      <div class="stat"><span>ยอดรวมทั้งงวด</span><b id="stTotal">0</b></div>
+      <div class="stat"><span>ยอดเก็บไว้เอง</span><b id="stKeep">0</b></div>
+      <div class="stat s"><span>ตัดส่งไปแล้ว</span><b id="stSent">0</b></div>
+      <div class="stat p"><span>เกินรอตัดส่ง</span><b id="stPend">0</b></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn primary" id="cutBtn">ตัดส่งครั้งที่ <span id="nextRound">1</span> <kbd>F8</kbd></button>
+      <span class="grow"></span>
+      <input class="search" id="search" placeholder="ค้นหาเลข" inputmode="numeric" aria-label="ค้นหาเลข">
+      <select id="sortSel" aria-label="เรียงลำดับ"><option value="amt">ยอดมาก → น้อย</option><option value="num">เรียงตามเลข</option></select>
+      <label class="chk"><input type="checkbox" id="onlyOver"> เฉพาะเลขที่เกิน</label>
+    </div>
+
+    <div class="sum" id="sum"></div>
+
+    <section class="card cuts">
+      <div class="cutshead"><h2>ประวัติการตัดส่ง</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="exportAll">Excel ตัดส่งทุกครั้ง</button><button class="btn danger" id="newPeriodBtn">ปิดงวด / เริ่มงวดใหม่</button></div>
+      </div>
+      <div id="cutList"></div>
+    </section>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+(() => {
+const TYPES = {tod:{label:'3 ตัวโต๊ด',short:'โต๊ด'}, top:{label:'2 ตัวบน',short:'2 ตัวบน'}, bot:{label:'2 ตัวล่าง',short:'2 ตัวล่าง'}};
+const ORDER = ['tod','top','bot'];
+const CHUNK = 400;
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const fmtTime = ts => new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+const fmtDT = ts => new Date(ts).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+function defaultPeriod(){
+  const d = new Date(); let day = d.getDate(), m = d.getMonth(), y = d.getFullYear();
+  let draw;
+  if (day <= 1) draw = new Date(y,m,1); else if (day <= 16) draw = new Date(y,m,16); else draw = new Date(y,m+1,1);
+  return draw.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+}
+
+/* ---------- state ---------- */
+const S = {
+  period:{id:uid(), label:defaultPeriod(), startedAt:Date.now()},
+  limits:{tod:300, top:500, bot:500},
+  chunks:[],          // {id, seq, e:[[id,n,t,a,ts],...]}
+  cuts:[]             // {id, round, ts, items:[[t,n,a],...]}
+};
+let freshIds = new Set();
+let justAdded = {tod:new Map(),top:new Map(),bot:new Map()};
+
+/* ---------- storage ---------- */
+let db=null, stRef=null, mode='local';
+const dirty = new Set(); let saving=false, timer=null;
+function setStatus(s, msg){
+  const el=$('saveState'); el.dataset.s=s;
+  const txt={loading:'กำลังโหลด…',pending:'รอบันทึก…',saving:'กำลังบันทึก…',saved: mode==='db'?'บันทึกแล้ว':'บันทึกไว้ในเครื่องนี้',error:msg||'บันทึกไม่สำเร็จ'}[s];
+  el.querySelector('span').textContent = txt;
+}
+function stateDoc(){ return {pid:S.period.id, label:S.period.label, startedAt:S.period.startedAt, limits:S.limits}; }
+function markDirty(k){ dirty.add(k); setStatus('pending'); clearTimeout(timer); timer=setTimeout(flush, 600); }
+async function writeKey(k){
+  if (mode==='local'){ try{ localStorage.setItem('lotto-v1', JSON.stringify(S)); }catch(e){} return; }
+  if (k==='state') return stRef.set(stateDoc());
+  const [kind,id] = k.split(':');
+  if (kind==='chunk'){ const c=S.chunks.find(x=>x.id===id); if(c) return stRef.collection('chunks').doc(id).set({pid:S.period.id, seq:c.seq, e:c.e}); }
+  if (kind==='cut'){ const c=S.cuts.find(x=>x.id===id); if(c) return stRef.collection('cuts').doc(id).set({pid:S.period.id, round:c.round, ts:c.ts, items:c.items}); }
+}
+async function flush(){
+  if (saving) return; saving=true; setStatus('saving');
+  try{
+    if (mode==='local'){ dirty.clear(); await writeKey('all'); }
+    while (dirty.size){ const k=dirty.values().next().value; dirty.delete(k);
+      try{ await writeKey(k); } catch(e){ dirty.add(k); throw e; } }
+    setStatus('saved');
+  }catch(e){
+    const code=e&&e.code;
+    setStatus('error', code==='quota_exceeded' ? 'พื้นที่เก็บข้อมูลเต็ม ปิดงวดเก่าเพื่อเคลียร์' : 'บันทึกไม่สำเร็จ จะลองใหม่');
+    if (code!=='quota_exceeded' && code!=='invalid_argument'){ clearTimeout(timer); timer=setTimeout(flush, 4000); }
+  }finally{ saving=false; if (dirty.size && $('saveState').dataset.s!=='error'){ clearTimeout(timer); timer=setTimeout(flush,300);} }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden' && dirty.size) flush(); });
+
+async function load(){
+  let user=null;
+  if (window.claude && claude.use){
+    try{ [db,user] = await Promise.all([claude.use('db'), claude.use('user')]); }catch(e){ db=null; }
+  }
+  let me=null;
+  if (db && user){ try{ me = await user.id(); }catch(e){} }
+  if (db && me){
+    mode='db';
+    stRef = db.doc('data/users/'+me+'/lotto');
+    try{
+      const s = await stRef.get();
+      if (s.exists){
+        const d=s.data(); S.period={id:d.pid,label:d.label,startedAt:d.startedAt}; S.limits=Object.assign({},S.limits,d.limits||{});
+        const [ch,cu] = await Promise.all([
+          stRef.collection('chunks').where('pid','==',S.period.id).limit(1000).get(),
+          stRef.collection('cuts').where('pid','==',S.period.id).limit(1000).get()
+        ]);
+        S.chunks = ch.docs.map(x=>{const v=x.data(); return {id:x.id, seq:v.seq, e:(v.e||[]).map(r=>r.slice())};}).sort((a,b)=>a.seq-b.seq);
+        S.cuts = cu.docs.map(x=>{const v=x.data(); return {id:x.id, round:v.round, ts:v.ts, items:(v.items||[]).map(r=>r.slice())};}).sort((a,b)=>a.round-b.round);
+      } else { markDirty('state'); }
+      setStatus('saved');
+    }catch(e){ setStatus('error','โหลดข้อมูลไม่สำเร็จ ลองรีเฟรชหน้า'); }
+  } else {
+    mode='local';
+    try{ const raw=localStorage.getItem('lotto-v1'); if(raw){ const d=JSON.parse(raw); Object.assign(S,d); } }catch(e){}
+    setStatus('saved');
+  }
+  $('loadingVeil').hidden = true;
+  syncHeader(); renderAll(); resetEntry();
+}
+
+/* ---------- data ops ---------- */
+function allEntries(){ const out=[]; for(const c of S.chunks) for(const r of c.e) out.push(r); return out; }
+function addEntries(rows){
+  let c = S.chunks[S.chunks.length-1];
+  for (const r of rows){
+    if (!c || c.e.length>=CHUNK){ c={id:uid(), seq:(c?c.seq+1:0), e:[]}; S.chunks.push(c); }
+    c.e.push(r); markDirty('chunk:'+c.id);
+  }
+}
+function removeEntry(id){
+  for (const c of S.chunks){ const i=c.e.findIndex(r=>r[0]===id); if(i>=0){ c.e.splice(i,1); markDirty('chunk:'+c.id); return; } }
+}
+function compute(){
+  const tot={tod:new Map(),top:new Map(),bot:new Map()}, sent={tod:new Map(),top:new Map(),bot:new Map()};
+  for (const c of S.chunks) for (const [, n,t,a] of c.e) tot[t].set(n,(tot[t].get(n)||0)+a);
+  for (const cut of S.cuts) for (const [t,n,a] of cut.items) sent[t].set(n,(sent[t].get(n)||0)+a);
+  const rows={tod:[],top:[],bot:[]}; let T=0,SE=0,P=0;
+  for (const t of ORDER){
+    const L=S.limits[t]||0, keys=new Set([...tot[t].keys(),...sent[t].keys()]);
+    for (const n of keys){
+      const total=tot[t].get(n)||0, s=sent[t].get(n)||0;
+      const pend=Math.max(0, Math.max(0,total-L)-s);
+      rows[t].push({n,total,sent:s,pend}); T+=total; SE+=s; P+=pend;
+    }
+  }
+  return {rows,T,SE,P,K:Math.max(0,T-SE-P)};
+}
+
+/* ---------- rendering ---------- */
+let rafPending=false;
+function renderAll(){ if(rafPending) return; rafPending=true; requestAnimationFrame(()=>{ rafPending=false; renderEntries(); renderSummary(); renderCuts(); }); }
+
+function renderEntries(){
+  const all=allEntries(); $('entryCount').textContent = fmt(all.length)+' รายการ';
+  $('entryEmpty').hidden = all.length>0;
+  const show = all.slice(-300).reverse();
+  $('entryBody').innerHTML = show.map(([id,n,t,a,ts])=>
+    `<tr class="${freshIds.has(id)?'fresh':''}"><td class="en">${n}</td><td><span class="tag ${t}">${TYPES[t].short}</span></td><td class="num ep">${fmt(a)}</td><td style="color:var(--muted);font-size:12px">${fmtTime(ts)}</td><td><button class="x" data-del="${id}" aria-label="ลบรายการ ${n}">✕</button></td></tr>`).join('')
+    + (all.length>300?`<tr><td colspan="5" style="text-align:center;color:var(--muted);font-size:12px">แสดง 300 รายการล่าสุด จากทั้งหมด ${fmt(all.length)}</td></tr>`:'');
+}
+
+function renderSummary(){
+  const r=compute();
+  $('stTotal').textContent=fmt(r.T); $('stKeep').textContent=fmt(r.K); $('stSent').textContent=fmt(r.SE); $('stPend').textContent=fmt(r.P);
+  $('nextRound').textContent = S.cuts.length+1;
+  const q=$('search').value.trim(), only=$('onlyOver').checked, sort=$('sortSel').value;
+  $('sum').innerHTML = ORDER.map(t=>{
+    let rows=r.rows[t];
+    const L=S.limits[t]||0, colTotal=rows.reduce((s,x)=>s+x.total,0), overCount=rows.filter(x=>x.pend>0).length;
+    const JA=justAdded[t];
+    if (q) rows=rows.filter(x=>x.n.includes(q)||JA.has(x.n));
+    if (only) rows=rows.filter(x=>x.pend>0||JA.has(x.n));
+    rows=rows.slice().sort(sort==='num'?(a,b)=>a.n.localeCompare(b.n):(a,b)=>b.total-a.total||a.n.localeCompare(b.n));
+    if (JA.size) rows=[...rows.filter(x=>JA.has(x.n)), ...rows.filter(x=>!JA.has(x.n))];
+    const body = rows.length ? rows.map(x=>{
+      const w = L>0?Math.min(100,x.total/L*100):100;
+      const ja=JA.get(x.n);
+      return `<tr class="${x.total>L?'over':''} ${ja?'justin':''}"><td class="n">${x.n}</td><td class="amt bar" style="--w:${w.toFixed(1)}%">${ja?`<span class="plus">+${fmt(ja)}</span>`:''}${fmt(x.total)}</td><td class="amt ${x.sent?'sent':'dim'}">${x.sent?fmt(x.sent):'–'}</td><td class="amt ${x.pend?'pend':'dim'}">${x.pend?fmt(x.pend):'–'}</td></tr>`;
+    }).join('') : `<tr><td colspan="4" class="empty">${q||only?'ไม่มีเลขตามที่กรอง':'ยังไม่มีเลข'}</td></tr>`;
+    return `<section class="card col"><div class="colhead"><h2>${TYPES[t].label}</h2><span>รวม ${fmt(colTotal)} · เกิน ${overCount} เลข</span></div>
+      <div class="scroll"><table><thead><tr><th>เลข</th><th>ยอดรวม</th><th>ส่งแล้ว</th><th>รอตัด</th></tr></thead><tbody>${body}</tbody></table></div></section>`;
+  }).join('');
+}
+
+function cutGroups(items){
+  const g={tod:[],top:[],bot:[]}; for(const [t,n,a] of items) g[t].push([n,a]);
+  for(const t of ORDER) g[t].sort((x,y)=>x[0].localeCompare(y[0]));
+  return g;
+}
+function threeTables(items){
+  const g=cutGroups(items);
+  return `<div class="three">${ORDER.map(t=>{const sum=g[t].reduce((s,x)=>s+x[1],0);
+    return `<div class="mini"><div class="scroll"><table class="rt"><thead><tr><th colspan="2"><div class="rth"><span class="rtt">${TYPES[t].label}</span><span class="rtd">${S.period.label}</span></div></th></tr></thead><tbody>${
+      g[t].length?g[t].map(([n,a])=>`<tr><td class="n">${n}</td><td class="amt">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2" class="none">ไม่มีเลขตัดส่ง</td></tr>'}</tbody><tfoot><tr><td>รวม</td><td class="amt">${fmt(sum)}</td></tr></tfoot></table></div></div>`;}).join('')}</div>`;
+}
+const openRounds=new Set();
+function renderCuts(){
+  if (!S.cuts.length){ $('cutList').innerHTML='<div class="empty" style="border-top:1px solid var(--line)">ยังไม่ได้ตัดส่งในงวดนี้ เมื่อมีเลขเกินยอดเก็บ กดปุ่ม “ตัดส่ง” เพื่อสรุปรอบ</div>'; return; }
+  $('cutList').innerHTML = S.cuts.slice().reverse().map(c=>{
+    const total=c.items.reduce((s,x)=>s+x[2],0), open=openRounds.has(c.id);
+    return `<div class="round"><div class="roundrow"><span class="rn">ตัดส่งครั้งที่ ${c.round}</span><span class="meta">${fmtDT(c.ts)} · ${c.items.length} เลข</span><span class="tot">${fmt(total)}</span>
+      <button class="btn" data-toggle="${c.id}">${open?'ซ่อน':'ดูรายการ'}</button><button class="btn" data-copy="${c.id}">คัดลอก</button><button class="btn" data-xlsx="${c.id}">Excel</button>${c.round===S.cuts.length?`<button class="btn danger" data-undo="${c.id}">ยกเลิกครั้งนี้</button>`:''}</div>
+      ${open?`<div class="rounddetail">${threeTables(c.items)}</div>`:''}</div>`;
+  }).join('');
+}
+
+/* ---------- entry flow ---------- */
+const numIn=$('numIn'), pTop=$('pTop'), pBot=$('pBot'), pTod=$('pTod'), pRev=$('pRev');
+let entryMode=null; // 'two' | 'three'
+const digits = v => v.replace(/\D/g,'');
+function setMode(m){
+  entryMode=m;
+  $('box-top').classList.toggle('off', m==='three'); $('box-bot').classList.toggle('off', m==='three');
+  $('box-tod').classList.toggle('off', m==='two'); $('box-rev').classList.toggle('off', m==='three');
+  pTop.disabled = pBot.disabled = pRev.disabled = m==='three'; pTod.disabled = m==='two';
+  $('revNum').textContent = (m==='two' && numIn.value.length===2) ? numIn.value[1]+numIn.value[0] : '';
+  const h=$('modeHint');
+  if (m==='three') h.innerHTML='เลข <b>'+numIn.value+'</b> → 3 ตัวโต๊ด';
+  else if (m==='two') h.innerHTML='เลข <b>'+numIn.value+'</b> → ใส่ราคา 2 ตัวบน / 2 ตัวล่าง';
+  else h.textContent=numIn.value.length===2?'เลข 2 ตัว · กด Enter':'พิมพ์เลข 2 หรือ 3 หลัก แล้วกด Enter';
+}
+function highlight(el){ for(const b of ['box-top','box-bot','box-tod','box-rev']) $(b).classList.remove('active'); if(el) el.closest('.price').classList.add('active'); }
+function focusPrice(el){ el.disabled=false; highlight(el); el.focus(); el.select(); }
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+const lastP={top:'',bot:'',tod:'',rev:''};
+function resetEntry(){ numIn.value=''; pTop.value=pBot.value=pTod.value=pRev.value=''; pTop.placeholder=lastP.top||'0'; pBot.placeholder=lastP.bot||'0'; pTod.placeholder=lastP.tod||'0'; pRev.placeholder=lastP.rev||'0'; setMode(null); pTop.disabled=pBot.disabled=pTod.disabled=pRev.disabled=false; highlight(null); numIn.focus(); }
+
+numIn.addEventListener('input',()=>{
+  const v=digits(numIn.value).slice(0,3); if(v!==numIn.value) numIn.value=v;
+  if (v.length===3){ setMode('three'); $('modeHint').innerHTML='เลข <b>'+v+'</b> → 3 ตัวโต๊ด · กด Enter'; pTod.disabled=true; }
+  else setMode(null);
+});
+for (const el of [pTop,pBot,pTod,pRev]){
+  el.addEventListener('input',()=>{ const v=digits(el.value).slice(0,7); if(v!==el.value) el.value=v; });
+  el.addEventListener('focus',()=>{ highlight(el); el.select(); });
+  el.addEventListener('keydown',e=>{ if(e.key==='+'||e.key==='*'){ e.preventDefault(); const k=el===pTop?'top':el===pBot?'bot':el===pRev?'rev':'tod'; if(lastP[k]){ el.value=lastP[k]; el.select(); } } });
+}
+numIn.addEventListener('keydown',e=>{
+  if (e.key!=='Enter') return; e.preventDefault();
+  const v=numIn.value;
+  if (v.length===2){ setMode('two'); focusPrice(pTop); }
+  else if (v.length===3){ setMode('three'); focusPrice(pTod); }
+  else resetEntry();
+});
+for (const el of [pTop,pBot,pRev]) el.addEventListener('keydown',e=>{ if(e.key==='/'){ e.preventDefault(); e.stopPropagation(); commit(true); } });
+pRev.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); commit();} else if(e.key==='Backspace'&&!pRev.value){ e.preventDefault(); focusPrice(pBot);} });
+pTop.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); focusPrice(+pTop.value>0 ? pRev : pBot);} else if(e.key==='Backspace'&&!pTop.value){ e.preventDefault(); numIn.focus(); highlight(null);} });
+pBot.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); focusPrice(pRev);} else if(e.key==='Backspace'&&!pBot.value){ e.preventDefault(); focusPrice(pTop);} });
+pTod.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); commit();} else if(e.key==='Backspace'&&!pTod.value){ e.preventDefault(); numIn.value=numIn.value.slice(0,2); setMode(null); highlight(null); numIn.focus(); } });
+$('entryCard').addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); resetEntry(); } });
+
+function commit(sameRev){
+  const n=numIn.value, ts=Date.now(), rows=[];
+  if (n.length===2){
+    const r=n[1]+n[0], a=+pTop.value||0, b=+pBot.value||0, c=+pRev.value||0;
+    if (sameRev){ if(a>0) rows.push([uid(),r,'top',a,ts]); if(b>0) rows.push([uid(),r,'bot',b,ts]); }
+    else if (c>0){ if(a>0) rows.push([uid(),r,'top',c,ts]); if(b>0) rows.push([uid(),r,'bot',c,ts]); }
+    if (c>0 && !sameRev) lastP.rev=pRev.value;
+  }
+  if (n.length===3){ const a=+pTod.value||0; if(a>0) rows.push([uid(),n,'tod',a,ts]); }
+  else if (n.length===2){ const a=+pTop.value||0, b=+pBot.value||0; if(a>0) rows.push([uid(),n,'top',a,ts]); if(b>0) rows.push([uid(),n,'bot',b,ts]); }
+  if (!rows.length){ if(n) toast('ไม่ได้บันทึกเลข '+n+' · ใส่เลขใหม่ได้เลย'); resetEntry(); return; }
+  if (n.length===3) lastP.tod=pTod.value; else { if(+pTop.value>0) lastP.top=pTop.value; if(+pBot.value>0) lastP.bot=pBot.value; }
+  addEntries(rows); freshIds=new Set(rows.map(r=>r[0]));
+  justAdded={tod:new Map(),top:new Map(),bot:new Map()};
+  for (const [,rn,rt,ra] of rows) justAdded[rt].set(rn,(justAdded[rt].get(rn)||0)+ra);
+  for (const t of ORDER){ const sc=document.querySelector('#sum .col:nth-child('+(ORDER.indexOf(t)+1)+') .scroll'); if(sc&&justAdded[t].size) sc.scrollTop=0; }
+  renderAll(); resetEntry();
+}
+
+$('entryBody').addEventListener('click',e=>{ const id=e.target.closest('[data-del]')?.dataset.del; if(!id) return; removeEntry(id); renderAll(); toast('ลบรายการแล้ว'); });
+
+/* ---------- header controls ---------- */
+function syncHeader(){ $('periodLabel').value=S.period.label; for(const t of ORDER) $('lim-'+t).value=fmt(S.limits[t]); }
+$('periodLabel').addEventListener('change',e=>{ S.period.label=e.target.value.trim()||defaultPeriod(); markDirty('state'); });
+for (const t of ORDER){
+  const el=$('lim-'+t);
+  el.addEventListener('focus',()=>{ el.value=String(S.limits[t]); el.select(); });
+  el.addEventListener('input',()=>{ const v=digits(el.value); if(v!==el.value) el.value=v; });
+  el.addEventListener('change',()=>{
+    const nv=+digits(el.value)||0, ov=S.limits[t];
+    if (nv===ov) return;
+    const apply=()=>{ S.limits[t]=nv; markDirty('state'); syncHeader(); renderAll(); closeModal(); resetEntry(); toast('เปลี่ยนยอดเก็บ '+TYPES[t].label+' เป็น '+fmt(nv)+' แล้ว'); };
+    const cancel=()=>{ syncHeader(); closeModal(); numIn.focus(); };
+    openModal(`<h2>ยืนยันแก้ยอดเก็บสูงสุดต่อเลข</h2><p>${TYPES[t].label}</p>
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span class="num" style="font-size:26px;color:var(--muted);text-decoration:line-through">${fmt(ov)}</span><span style="font-size:20px;color:var(--muted)">→</span><span class="num" style="font-size:40px;font-weight:600;color:var(--accent)">${fmt(nv)}</span><span style="color:var(--muted)">บาท</span></div>
+      <p style="margin-top:12px">ยอดรอตัดส่งของทุกเลขในประเภทนี้จะคำนวณใหม่ตามค่าใหม่ ส่วนที่ตัดส่งไปแล้วไม่เปลี่ยน</p>
+      <div class="actions"><button class="btn" id="mCancel">ไม่แก้ <kbd>Esc</kbd></button><button class="btn primary" id="mOk">ยืนยัน <kbd>Enter</kbd></button></div>`,
+      e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); apply(); } });
+    $('mCancel').onclick=cancel; $('mOk').onclick=apply; $('mOk').focus();
+  });
+  el.addEventListener('blur',()=>{ el.value=fmt(S.limits[t]); });
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const before=$('modalRoot').innerHTML; el.blur(); if(!$('modalRoot').innerHTML && !before) numIn.focus(); } else if(e.key==='Escape'){ e.preventDefault(); el.value=String(S.limits[t]); el.blur(); numIn.focus(); } });
+}
+for (const id of ['search','sortSel','onlyOver']) $(id).addEventListener(id==='search'?'input':'change', renderAll);
+$('search').addEventListener('input',()=>{ const el=$('search'); const v=digits(el.value).slice(0,3); if(v!==el.value) el.value=v; });
+
+document.addEventListener('keydown',e=>{
+  if (e.key==='F2'){ e.preventDefault(); closeModal(); resetEntry(); }
+  if (e.key==='F8'){ e.preventDefault(); openCut(); }
+});
+
+/* ---------- modal & toast ---------- */
+let modalKeys=null;
+function openModal(html, onKey){ $('modalRoot').innerHTML=`<div class="veil"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; modalKeys=onKey||null; }
+function closeModal(){ $('modalRoot').innerHTML=''; modalKeys=null; }
+document.addEventListener('keydown',e=>{ if(!$('modalRoot').innerHTML) return; if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); closeModal(); syncHeader(); numIn.focus(); } else if(modalKeys) modalKeys(e); },true);
+$('modalRoot').addEventListener('click',e=>{ if(e.target.classList.contains('veil')){ closeModal(); syncHeader(); numIn.focus(); } });
+let toastT; function toast(msg){ $('toastRoot').innerHTML=`<div class="toast" role="status">${msg}</div>`; clearTimeout(toastT); toastT=setTimeout(()=>$('toastRoot').innerHTML='',2600); }
+
+/* ---------- cut flow ---------- */
+function pendingItems(){ const r=compute(), items=[]; for(const t of ORDER) for(const x of r.rows[t]) if(x.pend>0) items.push([t,x.n,x.pend]); return items; }
+function openCut(){
+  if ($('loadingVeil').hidden===false) return;
+  const items=pendingItems();
+  if (!items.length){ toast('ยังไม่มีเลขที่เกินยอดเก็บ'); return; }
+  const round=S.cuts.length+1, total=items.reduce((s,x)=>s+x[2],0);
+  openModal(`<h2>ตัดส่งครั้งที่ ${round}</h2><p>ส่งเฉพาะยอดที่เกินในรอบนี้ ${items.length} เลข · งวด ${S.period.label}</p>
+    <div class="big">${fmt(total)} บาท</div><div style="margin-top:12px">${threeTables(items)}</div>
+    <div class="actions"><button class="btn" id="mCancel">ยกเลิก <kbd>Esc</kbd></button><button class="btn primary" id="mOk">ยืนยันตัดส่ง <kbd>Enter</kbd></button></div>`,
+    e=>{ if(e.key==='Enter'){ e.preventDefault(); confirmCut(items); } });
+  $('mCancel').onclick=()=>{ closeModal(); numIn.focus(); };
+  $('mOk').onclick=()=>confirmCut(items);
+  $('mOk').focus();
+}
+function confirmCut(items){
+  const cut={id:uid(), round:S.cuts.length+1, ts:Date.now(), items};
+  S.cuts.push(cut); markDirty('cut:'+cut.id); flush(); renderAll();
+  const total=items.reduce((s,x)=>s+x[2],0);
+  openModal(`<h2>บันทึกตัดส่งครั้งที่ ${cut.round} แล้ว</h2><p>${items.length} เลข รวม ${fmt(total)} บาท</p>
+    <div class="actions"><button class="btn" id="mCopy">คัดลอกเป็นข้อความ</button><button class="btn primary" id="mX">ดาวน์โหลด Excel</button><button class="btn" id="mClose">ปิด <kbd>Esc</kbd></button></div>`);
+  $('mCopy').onclick=()=>copyCut(cut); $('mX').onclick=()=>exportCuts([cut]); $('mClose').onclick=()=>{ closeModal(); numIn.focus(); };
+  $('mX').focus();
+}
+$('cutBtn').addEventListener('click',openCut);
+function openUndo(cut){
+  if (!cut || cut.round!==S.cuts.length) return;
+  const total=cut.items.reduce((s,x)=>s+x[2],0);
+  const go=async()=>{
+    $('mOk').disabled=true;
+    S.cuts=S.cuts.filter(c=>c.id!==cut.id); openRounds.delete(cut.id); dirty.delete('cut:'+cut.id);
+    if (mode==='db'){ try{ await stRef.collection('cuts').doc(cut.id).delete(); }catch(e){ S.cuts.push(cut); S.cuts.sort((a,b)=>a.round-b.round); closeModal(); renderAll(); toast('ยกเลิกไม่สำเร็จ ลองใหม่อีกครั้ง'); return; } }
+    else markDirty('all');
+    closeModal(); renderAll(); resetEntry(); toast('ยกเลิกตัดส่งครั้งที่ '+cut.round+' แล้ว ยอด '+fmt(total)+' กลับไปรอตัดส่ง');
+  };
+  openModal(`<h2>ยกเลิกตัดส่งครั้งที่ ${cut.round}</h2><p>${fmtDT(cut.ts)} · ${cut.items.length} เลข · ยอดทั้งหมดจะกลับไปอยู่ในช่อง “รอตัด” เหมือนก่อนตัด และรอบถัดไปจะกลับมาเป็นครั้งที่ ${cut.round}</p>
+    <div class="big" style="color:var(--over)">${fmt(total)} บาท</div><div style="margin-top:12px">${threeTables(cut.items)}</div>
+    <div class="actions"><button class="btn" id="mCancel">ไม่ยกเลิก <kbd>Esc</kbd></button><button class="btn danger solid" id="mOk">ยืนยันยกเลิก <kbd>Enter</kbd></button></div>`,
+    e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); if(!$('mOk').disabled) go(); } });
+  $('mCancel').onclick=()=>{ closeModal(); numIn.focus(); }; $('mOk').onclick=go; $('mOk').focus();
+}
+$('cutList').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const find=id=>S.cuts.find(c=>c.id===id);
+  if (b.dataset.toggle){ openRounds.has(b.dataset.toggle)?openRounds.delete(b.dataset.toggle):openRounds.add(b.dataset.toggle); renderCuts(); }
+  if (b.dataset.copy) copyCut(find(b.dataset.copy));
+  if (b.dataset.xlsx) exportCuts([find(b.dataset.xlsx)]);
+  if (b.dataset.undo) openUndo(find(b.dataset.undo));
+});
+$('exportAll').addEventListener('click',()=>{ if(!S.cuts.length){ toast('ยังไม่มีรอบตัดส่งในงวดนี้'); return; } exportCuts(S.cuts, true); });
+
+function cutText(cut){
+  const g=cutGroups(cut.items); let out=`งวด ${S.period.label} · ตัดส่งครั้งที่ ${cut.round}\n`;
+  for (const t of ORDER){ if(!g[t].length) continue; out+=`\n${TYPES[t].label}\n`+g[t].map(([n,a])=>`${n} = ${fmt(a)}`).join('\n')+`\nรวม ${fmt(g[t].reduce((s,x)=>s+x[1],0))}\n`; }
+  return out+`\nรวมทั้งหมด ${fmt(cut.items.reduce((s,x)=>s+x[2],0))}`;
+}
+async function copyCut(cut){
+  const text=cutText(cut);
+  try{ await navigator.clipboard.writeText(text); toast('คัดลอกแล้ว วางในแชตได้เลย'); }
+  catch(e){ openModal(`<h2>คัดลอกรายการ</h2><p>กด Ctrl+C เพื่อคัดลอก</p><textarea id="cpy" style="width:100%;height:300px;font-family:var(--mono);border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg)">${text}</textarea><div class="actions"><button class="btn" id="mClose">ปิด</button></div>`); $('cpy').select(); $('mClose').onclick=closeModal; }
+}
+
+/* ---------- excel ---------- */
+function sheetFor(cut){
+  const g=cutGroups(cut.items), aoa=[[`ตัดส่งครั้งที่ ${cut.round}`],['งวด',S.period.label],['เวลา',fmtDT(cut.ts)],[],['ประเภท','เลข','ยอดส่ง (บาท)']];
+  for (const t of ORDER){ if(!g[t].length) continue; for(const [n,a] of g[t]) aoa.push([TYPES[t].label,n,a]); aoa.push(['','รวม '+TYPES[t].short,g[t].reduce((s,x)=>s+x[1],0)]); }
+  aoa.push([],['','รวมทั้งหมด',cut.items.reduce((s,x)=>s+x[2],0)]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:14},{wch:14},{wch:16}]; return ws;
+}
+function sheetCombined(cuts){
+  const m=new Map(); for(const c of cuts) for(const [t,n,a] of c.items){ const k=t+'|'+n; m.set(k,(m.get(k)||0)+a); }
+  const items=[...m].map(([k,a])=>{const [t,n]=k.split('|'); return [t,n,a];});
+  const ws=sheetFor({round:'1–'+cuts.length, ts:Date.now(), items});
+  ws['A1'].v='รวมตัดส่งทุกครั้ง (1–'+cuts.length+')'; return ws;
+}
+let dlP=null;
+async function exportCuts(cuts, all){
+  if (typeof XLSX==='undefined'){ toast('โหลดตัวสร้าง Excel ไม่สำเร็จ ลองรีเฟรชหน้า'); return; }
+  const wb=XLSX.utils.book_new();
+  if (all) XLSX.utils.book_append_sheet(wb, sheetCombined(cuts), 'รวมทุกครั้ง');
+  for (const c of cuts) XLSX.utils.book_append_sheet(wb, sheetFor(c), 'ครั้งที่ '+c.round);
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const safe=S.period.label.replace(/[\\/:*?"<>|]/g,'-');
+  const filename = all ? `ตัดส่ง_งวด ${safe}_ทุกครั้ง.xlsx` : `ตัดส่ง_งวด ${safe}_ครั้งที่ ${cuts[0].round}.xlsx`;
+  if (!dlP) dlP = (window.claude&&claude.use) ? claude.use('downloads') : Promise.resolve(null);
+  const dl = await dlP;
+  if (!dl){
+    try{ const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); toast('ดาวน์โหลด Excel แล้ว'); }
+    catch(e){ toast('ดาวน์โหลดไม่สำเร็จ ใช้ปุ่ม “คัดลอก” แทน'); }
+    return;
+  }
+  try{ await dl.save({filename, data:new Blob([buf])}); toast('ส่งไฟล์ Excel แล้ว'); }
+  catch(e){ if(e&&e.code==='declined') return; toast(e&&e.code==='rate_limited'?'มีหน้าต่างบันทึกไฟล์เปิดอยู่แล้ว':'ดาวน์โหลดไม่สำเร็จ'); }
+}
+
+/* ---------- new period ---------- */
+$('newPeriodBtn').addEventListener('click',()=>{
+  const r=compute();
+  openModal(`<h2>ปิดงวด ${S.period.label}</h2>
+    <p>รายการคีย์ทั้งหมด (${fmt(allEntries().length)} รายการ, ยอด ${fmt(r.T)}) และประวัติตัดส่ง ${S.cuts.length} ครั้งจะถูกลบถาวร ถ้ายังไม่ได้เก็บไฟล์ ให้กด Excel ตัดส่งทุกครั้งก่อน</p>
+    <label for="npLabel" style="font-size:12px;color:var(--muted)">ชื่องวดใหม่</label><input id="npLabel" type="text" value="${defaultPeriod()}">
+    <div class="actions"><button class="btn" id="mCancel">ยกเลิก</button>${S.cuts.length?'<button class="btn" id="mExp">Excel ตัดส่งทุกครั้ง</button>':''}<button class="btn danger solid" id="mOk">ลบข้อมูลและเริ่มงวดใหม่</button></div>`);
+  $('mCancel').onclick=closeModal; if($('mExp')) $('mExp').onclick=()=>exportCuts(S.cuts,true);
+  $('mOk').onclick=async()=>{
+    const label=$('npLabel').value.trim()||defaultPeriod(); $('mOk').disabled=true; $('mOk').textContent='กำลังลบ…';
+    clearTimeout(timer); dirty.clear();
+    const old={chunks:S.chunks.slice(), cuts:S.cuts.slice()};
+    S.period={id:uid(), label, startedAt:Date.now()}; S.chunks=[]; S.cuts=[]; openRounds.clear();
+    if (mode==='db'){
+      try{
+        await stRef.set(stateDoc());
+        for (const c of old.chunks) await stRef.collection('chunks').doc(c.id).delete();
+        for (const c of old.cuts) await stRef.collection('cuts').doc(c.id).delete();
+      }catch(e){ toast('ลบข้อมูลงวดเก่าไม่ครบ แต่เริ่มงวดใหม่แล้ว'); }
+    } else markDirty('all');
+    setStatus('saved'); closeModal(); syncHeader(); renderAll(); resetEntry(); toast('เริ่มงวด '+label+' แล้ว');
+  };
+});
+
+/* ---------- demo ---------- */
+$('demoBtn').addEventListener('click',()=>{
+  const ts=Date.now(), rows=[], pick=a=>a[Math.floor(Math.random()*a.length)];
+  const hot2=['45','54','19','91','07','70','28','82'], hot3=['459','954','123','307','888'];
+  for(let i=0;i<70;i++){
+    if (Math.random()<.35){ rows.push([uid(),pick(hot3),'tod',pick([20,50,50,100,100,200]),ts-i*40000]); }
+    else { const n=Math.random()<.7?pick(hot2):String(Math.floor(Math.random()*100)).padStart(2,'0');
+      rows.push([uid(),n,'top',pick([50,100,100,200,300]),ts-i*40000]); if(Math.random()<.7) rows.push([uid(),n,'bot',pick([50,100,200]),ts-i*40000]); }
+  }
+  rows.sort((a,b)=>a[4]-b[4]); addEntries(rows);
+  S.period.label='ตัวอย่าง (ปิดงวดเพื่อล้าง)'; markDirty('state'); syncHeader(); renderAll(); numIn.focus();
+});
+
+renderAll();
+load();
+})();
+</script>
+
+</body>
+</html>
