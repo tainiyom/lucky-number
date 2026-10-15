@@ -51,6 +51,11 @@ header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-b
 .save[data-s="saved"] i{background:var(--accent)} .save[data-s="saving"] i,.save[data-s="pending"] i{background:var(--pend)} .save[data-s="error"] i{background:var(--over)}
 
 .grid{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:16px;align-items:start}
+@media (min-width:901px){.grid.keyright{grid-template-columns:minmax(0,1fr) minmax(300px,360px)}.grid.keyright>:first-child{order:2}}
+.side{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.side span{font-size:12px;color:var(--muted);padding:5px 8px 5px 10px;align-self:center}
+.side button{border:0;border-left:1px solid var(--line);background:transparent;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:500}
+.side button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
 @media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
 h2{font-family:var(--display);font-size:15px;font-weight:600;margin:0;letter-spacing:.02em}
@@ -198,10 +203,11 @@ td.dim{color:var(--line)}
     <div class="lim"><span>2 ตัวบน</span><input id="lim-top" class="num" inputmode="numeric"></div>
     <div class="lim"><span>2 ตัวล่าง</span><input id="lim-bot" class="num" inputmode="numeric"></div>
   </div>
+  <div class="side" role="group" aria-label="ตำแหน่งกล่อง Key"><span>กล่อง Key</span><button id="sideL" data-side="left" aria-pressed="true">◀ ซ้าย</button><button id="sideR" data-side="right" aria-pressed="false">ขวา ▶</button></div>
   <div class="save" id="saveState" data-s="loading"><i></i><span>กำลังโหลด…</span></div>
 </header>
 
-<div class="grid">
+<div class="grid" id="mainGrid">
   <div>
     <section class="card entry" id="entryCard">
       <h2>Key <small>F2 กลับมาที่ช่องเลข</small></h2>
@@ -671,6 +677,13 @@ $('demoBtn').addEventListener('click',()=>{
   S.period.label='ตัวอย่าง (ปิดงวดเพื่อล้าง)'; markDirty('state'); syncHeader(); renderAll(); numIn.focus();
 });
 
+function setSide(s, save){
+  $('mainGrid').classList.toggle('keyright', s==='right');
+  $('sideL').setAttribute('aria-pressed', String(s!=='right')); $('sideR').setAttribute('aria-pressed', String(s==='right'));
+  if (save){ try{ localStorage.setItem('lotto-side', s); }catch(e){} }
+}
+for (const b of [$('sideL'),$('sideR')]) b.addEventListener('click',()=>{ setSide(b.dataset.side,true); numIn.focus(); });
+try{ setSide(localStorage.getItem('lotto-side')||'left', false); }catch(e){}
 renderAll();
 load();
 })();
