@@ -7,7 +7,7 @@
 <style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
 /* Layout: ledger workbench — left key-in rail, right summary in three type columns, cut rounds below */
 :root{
@@ -608,17 +608,38 @@ async function copyCut(cut){
 }
 
 /* ---------- excel ---------- */
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function xlsDate(ts){
+  const m=String(S.period.label).match(/(\d{1,2})\s*([ก-ฮ][ก-๎.]*\.)\s*(\d{4})/);
+  if (m){ let y=+m[3]; if(y>2400) y-=543; return `วันที่ ${+m[1]} ${m[2]}${y}`; }
+  const d=new Date(ts); return `วันที่ ${d.getDate()} ${TH_MON[d.getMonth()]}${d.getFullYear()}`;
+}
 function sheetFor(cut){
-  const g=cutGroups(cut.items), aoa=[[`ตัดส่งครั้งที่ ${cut.round}`],['งวด',S.period.label],['เวลา',fmtDT(cut.ts)],[],['ประเภท','เลข','ยอดส่ง (บาท)']];
-  for (const t of ORDER){ if(!g[t].length) continue; for(const [n,a] of g[t]) aoa.push([TYPES[t].label,n,a]); aoa.push(['','รวม '+TYPES[t].short,g[t].reduce((s,x)=>s+x[1],0)]); }
-  aoa.push([],['','รวมทั้งหมด',cut.items.reduce((s,x)=>s+x[2],0)]);
-  const ws=XLSX.utils.aoa_to_sheet(aoa); ws['!cols']=[{wch:14},{wch:14},{wch:16}]; return ws;
+  const g=cutGroups(cut.items), ws={}, merges=[], date=xlsDate(cut.ts);
+  const F={name:'Tahoma',sz:16}, thin={style:'thin',color:{rgb:'000000'}}, box={top:thin,bottom:thin,left:thin,right:thin};
+  const put=(r,c,v,s,t)=>{ ws[XLSX.utils.encode_cell({r,c})]={v,t:t||(typeof v==='number'?'n':'s'),s:Object.assign({font:F},s)}; };
+  const types=ORDER.filter(t=>g[t].length);
+  let maxR=2;
+  types.forEach((t,i)=>{
+    const c=1+i*3;
+    put(1,c,date,{alignment:{horizontal:'right'}}); put(1,c+1,'',{}); merges.push({s:{r:1,c},e:{r:1,c:c+1}});
+    put(2,c,TYPES[t].label,{alignment:{horizontal:'center',vertical:'center'},border:box}); put(2,c+1,'',{border:box}); merges.push({s:{r:2,c},e:{r:2,c:c+1}});
+    let r=3;
+    for (const [n,a] of g[t]){ put(r,c,n,{alignment:{horizontal:'left'},border:box},'s'); put(r,c+1,a,{alignment:{horizontal:'right'},border:box,numFmt:'0'}); r++; }
+    put(r,c,'รวม '+TYPES[t].label,{alignment:{horizontal:'left'}}); put(r,c+1,g[t].reduce((s,x)=>s+x[1],0),{alignment:{horizontal:'right'},numFmt:'0'});
+    maxR=Math.max(maxR,r);
+  });
+  const lastC=types.length*3;
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR+1,c:lastC}});
+  ws['!merges']=merges;
+  const cols=[{wch:4}]; types.forEach(()=>cols.push({wch:26},{wch:30},{wch:4})); ws['!cols']=cols;
+  ws['!rows']=Array.from({length:maxR+2},(_,i)=>({hpt:i===0?14:30}));
+  return ws;
 }
 function sheetCombined(cuts){
   const m=new Map(); for(const c of cuts) for(const [t,n,a] of c.items){ const k=t+'|'+n; m.set(k,(m.get(k)||0)+a); }
   const items=[...m].map(([k,a])=>{const [t,n]=k.split('|'); return [t,n,a];});
-  const ws=sheetFor({round:'1–'+cuts.length, ts:Date.now(), items});
-  ws['A1'].v='รวมตัดส่งทุกครั้ง (1–'+cuts.length+')'; return ws;
+  return sheetFor({round:'1–'+cuts.length, ts:Date.now(), items});
 }
 let dlP=null;
 async function exportCuts(cuts, all){
