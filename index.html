@@ -89,6 +89,18 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .shake{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
+.voice{margin-top:10px;border:1px dashed var(--key-line);border-radius:10px;background:var(--key-field);padding:8px 10px;display:grid;gap:6px}
+.voice .vrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vbtn{border:1px solid var(--key-line);background:var(--panel);border-radius:999px;padding:5px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.vbtn i{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
+.vbtn.on{background:var(--over);border-color:var(--over);color:#fff}
+.vbtn.on i{background:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.vbtn.on i{animation:none}}
+.vheard{font-size:13px;color:var(--muted);min-height:18px}
+.vparsed{font-size:15px;font-weight:600;color:var(--accent)}
+.vparsed.err{color:var(--over)}
+.vparsed small{font-weight:400;color:var(--muted);font-size:12px}
 .loading{position:absolute;inset:0;background:color-mix(in srgb,var(--panel) 88%,transparent);display:grid;place-items:center;border-radius:10px;font-weight:500;color:var(--muted)}
 
 .list{margin-top:16px;padding:12px 0 4px}
@@ -215,6 +227,10 @@ td.dim{color:var(--line)}
         <label for="numIn">เลข (2 หรือ 3 หลัก)</label>
         <input id="numIn" class="bignum" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="––">
         <div class="modehint" id="modeHint">พิมพ์เลข 2 หรือ 3 หลัก แล้วกด Enter</div>
+      </div>
+      <div class="voice" id="voiceBar" hidden>
+        <div class="vrow"><button class="vbtn" id="vBtn" type="button"><i></i><span id="vBtnTxt">กดค้าง F4 แล้วพูด</span></button><span class="vheard" id="vHeard">เช่น “สองสี่ บน ห้าสิบ” · “สองสี่ บนกลับ ห้าสิบ” · “หนึ่งหนึ่งสอง สามร้อย”</span></div>
+        <div class="vparsed" id="vParsed" hidden></div>
       </div>
       <div class="prices">
         <div class="price" id="box-top"><label for="pTop">2 ตัวบน <kbd>Tab = ไปล่าง</kbd></label><input id="pTop" inputmode="numeric" autocomplete="off" placeholder="0"></div>
@@ -498,6 +514,9 @@ function commit(sameRev){
   else if (n.length===2){ const a=+pTop.value||0, b=+pBot.value||0; if(a>0) rows.push([uid(),n,'top',a,ts]); if(b>0) rows.push([uid(),n,'bot',b,ts]); }
   if (!rows.length){ if(n) toast('ไม่ได้บันทึกเลข '+n+' · ใส่เลขใหม่ได้เลย'); resetEntry(); return; }
   if (n.length===3) lastP.tod=pTod.value; else { if(+pTop.value>0) lastP.top=pTop.value; if(+pBot.value>0) lastP.bot=pBot.value; }
+  finishCommit(rows);
+}
+function finishCommit(rows){
   addEntries(rows); freshIds=new Set(rows.map(r=>r[0]));
   justAdded={tod:new Map(),top:new Map(),bot:new Map()};
   for (const [,rn,rt,ra] of rows) justAdded[rt].set(rn,(justAdded[rt].get(rn)||0)+ra);
@@ -775,10 +794,115 @@ function setSide(s, save){
 }
 for (const b of [$('sideL'),$('sideR')]) b.addEventListener('click',()=>{ setSide(b.dataset.side,true); numIn.focus(); });
 try{ setSide(localStorage.getItem('lotto-side')||'left', false); }catch(e){}
+/* ---------- voice ---------- */
+const TH_D={'ศูนย์':0,'สูญ':0,'หนึ่ง':1,'หนี่ง':1,'เอ็ด':1,'สอง':2,'ยี่':2,'สาม':3,'สี่':4,'ห้า':5,'หก':6,'เจ็ด':7,'แปด':8,'เก้า':9};
+const TH_M={'สิบ':10,'ร้อย':100,'พัน':1000,'หมื่น':10000,'แสน':100000};
+const TH_W=new RegExp(Object.keys(TH_D).concat(Object.keys(TH_M)).sort((a,b)=>b.length-a.length).join('|'),'g');
+function thWords(chunk){ return chunk.match(TH_W)||[]; }
+function thValue(words){
+  let total=0,cur=null;
+  for (const w of words){
+    if (w in TH_D) cur=TH_D[w];
+    else { total+=(cur===null?1:cur)*TH_M[w]; cur=null; }
+  }
+  return total+(cur||0);
+}
+function parseVoice(raw){
+  let t=String(raw||'').replace(/[๐-๙]/g,c=>'๐๑๒๓๔๕๖๗๘๙'.indexOf(c)).replace(/(\d),(\d)/g,'$1$2')
+    .replace(/บาท/g,' ').replace(/ตัว/g,' ').replace(/โต้ด|โตด|ต๊อด|ต็อด|โต๊ต/g,'โต๊ด').replace(/คูณ|x|\*/gi,' ');
+  const re=new RegExp('(บน|ล่าง|กลับ|โต๊ด)|(\\d+)|((?:'+TH_W.source+')+)','g');
+  const toks=[]; let m;
+  while((m=re.exec(t))){ if(m[1]) toks.push({k:m[1]}); else if(m[2]) toks.push({a:m[2]}); else toks.push({w:thWords(m[3])}); }
+  const firstK=toks.findIndex(x=>x.k);
+  let n='', rest;
+  const pre=firstK<0?toks:toks.slice(0,firstK);
+  if (firstK>=0){
+    for (const x of pre){ if(x.a) n+=x.a; else if(x.w){ n+= x.w.some(w=>w in TH_M) ? String(thValue(x.w)).padStart(2,'0') : x.w.map(w=>TH_D[w]).join(''); } }
+    rest=toks.slice(firstK);
+  } else {
+    // no keyword: 3-digit number then price
+    rest=[]; let i=0;
+    if (pre[0]&&pre[0].a){ while(i<pre.length&&pre[i].a&&n.length<3){ n+=pre[i].a; i++; } rest=pre.slice(i); }
+    else if (pre[0]&&pre[0].w){
+      const ws=pre.flatMap((x,j)=>x.w?x.w.map(w=>({w,j})):[{a:x.a,j}]); let k=0;
+      while(k<ws.length&&n.length<3&&ws[k].w&&(ws[k].w in TH_D)&&!(ws[k+1]&&ws[k+1].w&&(ws[k+1].w in TH_M))){ n+=TH_D[ws[k].w]; k++; }
+      const left=ws.slice(k); rest=[];
+      for(const x of left){ if(x.a) rest.push({a:x.a}); else { const L=rest[rest.length-1]; if(L&&L.w) L.w.push(x.w); else rest.push({w:[x.w]}); } }
+    }
+  }
+  if (!/^\d{2,3}$/.test(n)) return {err:'ไม่ได้ยินเลข 2 หรือ 3 หลัก'};
+  const P={top:0,bot:0,tod:0}, rev=new Set(); let pend=[], pendRev=false, assigned=[];
+  const merged=[]; for(const x of rest){ const L=merged[merged.length-1]; if(x.w&&L&&L.w) L.w=L.w.concat(x.w); else merged.push(x.w?{w:x.w.slice()}:x); }
+  for (const x of merged){
+    if (x.k==='บน') pend.push('top'); else if (x.k==='ล่าง') pend.push('bot'); else if (x.k==='โต๊ด') pend.push('tod');
+    else if (x.k==='กลับ'){ if(pend.length) pendRev=true; else assigned.forEach(tp=>rev.add(tp)); }
+    else { const v=x.a?+x.a:thValue(x.w); if(!(v>0)) continue;
+      let ts=pend.length?pend:(n.length===3?['tod']:assigned.length?assigned:[]);
+      if (!ts.length) return {err:'ไม่ได้ยินว่าเป็น บน หรือ ล่าง'};
+      ts.forEach(tp=>{ P[tp]=v; if(pendRev) rev.add(tp); }); assigned=Array.from(new Set(assigned.concat(ts))); pend=[]; pendRev=false; }
+  }
+  if (n.length===3){ if(!P.tod) return {err:'ไม่ได้ยินราคาโต๊ด'}; return {n,P:{top:0,bot:0,tod:P.tod},rev:new Set()}; }
+  if (!P.top && !P.bot) return {err:'ไม่ได้ยินราคา'};
+  P.tod=0; return {n,P,rev:new Set([...rev].filter(tp=>tp!=='tod'&&P[tp]))};
+}
+function voiceRows(r){
+  const ts=Date.now(), rows=[];
+  if (r.n.length===3){ rows.push([uid(),r.n,'tod',r.P.tod,ts]); return rows; }
+  const rn=r.n[1]+r.n[0];
+  for (const tp of ['top','bot']) if (r.P[tp] && r.rev.has(tp)) rows.push([uid(),rn,tp,r.P[tp],ts]);
+  for (const tp of ['top','bot']) if (r.P[tp]) rows.push([uid(),r.n,tp,r.P[tp],ts]);
+  return rows;
+}
+let voicePending=null;
+function showParsed(html,err){ const el=$('vParsed'); el.hidden=!html; el.className='vparsed'+(err?' err':''); el.innerHTML=html||''; }
+function applyVoice(text){
+  $('vHeard').textContent='ได้ยิน: “'+text+'”';
+  const r=parseVoice(text);
+  if (r.err){ voicePending=null; showParsed(r.err+' · กด F4 พูดใหม่',true); return; }
+  resetEntry();
+  numIn.value=r.n; setMode(r.n.length===3?'three':'two');
+  if (r.n.length===3) pTod.value=r.P.tod; else { pTop.value=r.P.top||''; pBot.value=r.P.bot||''; const rp=[...r.rev].map(tp=>r.P[tp]); pRev.value=rp.length?rp[0]:''; }
+  const rows=voiceRows(r); voicePending=rows;
+  const L={tod:'โต๊ด',top:'บน',bot:'ล่าง'};
+  showParsed(rows.slice().reverse().map(([,n,tp,a])=>`${n} ${L[tp]} ${fmt(a)}`).join(' · ')+' <small>กด Enter ลงรายการ · Esc ยกเลิก</small>');
+  numIn.focus();
+}
+document.addEventListener('keydown',e=>{
+  if (!voicePending || $('modalRoot').innerHTML) return;
+  if (e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); const rows=voicePending; voicePending=null; showParsed(''); finishCommit(rows); }
+  else if (e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); voicePending=null; showParsed(''); resetEntry(); }
+},true);
+for (const el of [numIn,pTop,pBot,pTod,pRev]) el.addEventListener('input',()=>{ if(voicePending){ voicePending=null; showParsed(''); } });
+(function initVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if (!SR || window.claude) return;
+  $('voiceBar').hidden=false;
+  let rec=null, listening=false, finalTxt='', interim='';
+  function start(){
+    if (listening) return;
+    try{
+      rec=new SR(); rec.lang='th-TH'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+      finalTxt=''; interim='';
+      rec.onresult=ev=>{ interim=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const tx=ev.results[i][0].transcript; if(ev.results[i].isFinal) finalTxt+=tx+' '; else interim+=tx; } $('vHeard').textContent='กำลังฟัง: '+(finalTxt+interim); };
+      rec.onerror=ev=>{ const msg={'not-allowed':'ยังไม่ได้อนุญาตไมโครโฟน กดรูปกุญแจข้างแถบที่อยู่เว็บเพื่ออนุญาต','no-speech':'ไม่ได้ยินเสียง ลองพูดใหม่','network':'ต้องต่ออินเทอร์เน็ตเพื่อฟังเสียง','audio-capture':'ไม่พบไมโครโฟน'}[ev.error]; if(msg) showParsed(msg,true); };
+      rec.onend=()=>{ listening=false; $('vBtn').classList.remove('on'); $('vBtnTxt').textContent='กดค้าง F4 แล้วพูด'; const tx=(finalTxt+interim).trim(); if(tx) applyVoice(tx); };
+      rec.start(); listening=true; voicePending=null; showParsed('');
+      $('vBtn').classList.add('on'); $('vBtnTxt').textContent='กำลังฟัง… ปล่อยเพื่อจบ'; $('vHeard').textContent='กำลังฟัง…';
+    }catch(err){ showParsed('เริ่มฟังเสียงไม่ได้ ลองใหม่',true); }
+  }
+  function stop(){ if(listening&&rec){ try{ rec.stop(); }catch(e){} } }
+  document.addEventListener('keydown',e=>{ if(e.key==='F4'){ e.preventDefault(); if(!e.repeat) start(); } });
+  document.addEventListener('keyup',e=>{ if(e.key==='F4'){ e.preventDefault(); stop(); } });
+  const b=$('vBtn');
+  b.addEventListener('pointerdown',e=>{ e.preventDefault(); start(); });
+  b.addEventListener('pointerup',stop); b.addEventListener('pointerleave',stop);
+})();
+
 renderAll();
 load();
 })();
 </script>
+
 
 </body>
 </html>
