@@ -89,18 +89,34 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .shake{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
-.voice{margin-top:10px;border:1px dashed var(--key-line);border-radius:10px;background:var(--key-field);padding:8px 10px;display:grid;gap:6px}
-.voice .vrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.vbtn{border:1px solid var(--key-line);background:var(--panel);border-radius:999px;padding:5px 14px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:8px}
-.vbtn i{width:10px;height:10px;border-radius:50%;background:var(--muted);display:inline-block}
-.vbtn.on{background:var(--over);border-color:var(--over);color:#fff}
-.vbtn.on i{background:#fff;animation:pulse 1s infinite}
-@keyframes pulse{50%{opacity:.3}}
-@media (prefers-reduced-motion:reduce){.vbtn.on i{animation:none}}
-.vheard{font-size:13px;color:var(--muted);min-height:18px}
-.vparsed{font-size:15px;font-weight:600;color:var(--accent)}
-.vparsed.err{color:var(--over)}
-.vparsed small{font-weight:400;color:var(--muted);font-size:12px}
+.imgbtn{margin-top:10px;width:100%;justify-content:center;border:1px dashed var(--key-line);background:var(--key-field);border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.imgbtn:hover{border-color:var(--accent)}
+.imgbtn small{font-weight:400;color:var(--muted)}
+.modal.wide{width:min(1240px,100%);max-height:92vh}
+.ir{display:grid;grid-template-columns:minmax(260px,38%) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:860px){.ir{grid-template-columns:minmax(0,1fr)}}
+.irimg{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:66vh;background:var(--bg);cursor:zoom-in}
+.irimg img{display:block;width:100%;height:auto}
+.irthumbs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.irthumbs button{border:2px solid var(--line);border-radius:6px;background:var(--panel);padding:2px 8px;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:600}
+.irthumbs button.sel{border-color:var(--accent);color:var(--accent)}
+.irthumbs button.run{border-style:dashed}
+.irthumbs button.err{border-color:var(--over);color:var(--over)}
+.irtw{overflow:auto;max-height:58vh;border:1px solid var(--line);border-radius:8px}
+.irt{border-collapse:collapse;width:100%}
+.irt th{position:sticky;top:0;background:var(--soft);font-size:12px;font-weight:600;color:var(--muted);padding:6px;border:1px solid var(--line);text-align:center;z-index:1}
+.irt td{border:1px solid var(--line);padding:2px 3px;text-align:center;white-space:normal}
+.irt td input[type=text]{width:100%;min-width:52px;border:1px solid transparent;border-radius:5px;background:transparent;padding:4px 5px;font-family:var(--mono);font-size:16px;font-weight:600;text-align:right;color:var(--ink)}
+.irt td input.n{text-align:center;letter-spacing:.08em}
+.irt td input[type=text]:focus{border-color:var(--accent);background:var(--panel);outline:none}
+.irt td.raw{text-align:left;font-size:12px;color:var(--muted);max-width:200px}
+.irt td.raw em{display:block;color:var(--pend);font-style:normal;font-weight:600}
+.irt tr.unsure td{background:var(--pend-soft)}
+.irt tr.bad td{background:var(--over-soft)}
+.irsum{display:flex;flex-wrap:wrap;gap:6px 16px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.irsum b{font-family:var(--mono);color:var(--ink);font-size:15px}
+.irstatus{font-size:13px;min-height:20px;margin-bottom:8px}
+.irstatus.err{color:var(--over)}
 .loading{position:absolute;inset:0;background:color-mix(in srgb,var(--panel) 88%,transparent);display:grid;place-items:center;border-radius:10px;font-weight:500;color:var(--muted)}
 
 .list{margin-top:16px;padding:12px 0 4px}
@@ -228,10 +244,8 @@ td.dim{color:var(--line)}
         <input id="numIn" class="bignum" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="––">
         <div class="modehint" id="modeHint">พิมพ์เลข 2 หรือ 3 หลัก แล้วกด Enter</div>
       </div>
-      <div class="voice" id="voiceBar" hidden>
-        <div class="vrow"><button class="vbtn" id="vBtn" type="button"><i></i><span id="vBtnTxt">กดค้าง F4 แล้วพูด</span></button><span class="vheard" id="vHeard">เช่น “สองสี่ บน ห้าสิบ” · “สองสี่ บนกลับ ห้าสิบ” · “หนึ่งหนึ่งสอง สามร้อย”</span></div>
-        <div class="vparsed" id="vParsed" hidden></div>
-      </div>
+      <button class="imgbtn" id="imgBtn" type="button" hidden>อ่านจากภาพ <small>เลือกไฟล์ หรือกด Ctrl+V วางภาพ</small></button>
+      <input type="file" id="imgFile" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
       <div class="prices">
         <div class="price" id="box-top"><label for="pTop">2 ตัวบน <kbd>Tab = ไปล่าง</kbd></label><input id="pTop" inputmode="numeric" autocomplete="off" placeholder="0"></div>
         <div class="price" id="box-bot"><label for="pBot">2 ตัวล่าง <kbd>Enter</kbd></label><input id="pBot" inputmode="numeric" autocomplete="off" placeholder="0"></div>
@@ -794,109 +808,151 @@ function setSide(s, save){
 }
 for (const b of [$('sideL'),$('sideR')]) b.addEventListener('click',()=>{ setSide(b.dataset.side,true); numIn.focus(); });
 try{ setSide(localStorage.getItem('lotto-side')||'left', false); }catch(e){}
-/* ---------- voice ---------- */
-const TH_D={'ศูนย์':0,'สูญ':0,'หนึ่ง':1,'หนี่ง':1,'เอ็ด':1,'สอง':2,'ยี่':2,'สาม':3,'สี่':4,'ห้า':5,'หก':6,'เจ็ด':7,'แปด':8,'เก้า':9};
-const TH_M={'สิบ':10,'ร้อย':100,'พัน':1000,'หมื่น':10000,'แสน':100000};
-const TH_W=new RegExp(Object.keys(TH_D).concat(Object.keys(TH_M)).sort((a,b)=>b.length-a.length).join('|'),'g');
-function thWords(chunk){ return chunk.match(TH_W)||[]; }
-function thValue(words){
-  let total=0,cur=null;
-  for (const w of words){
-    if (w in TH_D) cur=TH_D[w];
-    else { total+=(cur===null?1:cur)*TH_M[w]; cur=null; }
+/* ---------- read from image ---------- */
+const IR_PROMPT=`ภาพนี้คือโพยหวยไทย อาจเป็นลายมือบนกระดาษ หรือภาพแคปแชต (LINE ฯลฯ) ที่ลูกค้าพิมพ์มา
+หน้าที่: อ่านทุกบรรทัดที่เป็นการซื้อเลข แล้วแปลงเป็น JSON
+
+รูปแบบที่พบบ่อย:
+- "45 = 100x50", "45 100*50", "45 บ100 ล50", "45 บน100 ล่าง50" → เลข 45, 2 ตัวบน 100, 2 ตัวล่าง 50 (ตัวแรก=บน ตัวหลัง=ล่าง)
+- "45 = 100" ที่ไม่บอกบน/ล่าง → ใส่เป็นบน และตั้ง unsure=true
+- "45 บน 100" หรือ "45 ล่าง 50" → ใส่เฉพาะช่องนั้น
+- "กลับ", "ก", "+กลับ" หลังเลข 2 ตัว → rev=true; ถ้าเขียนราคากลับแยกไว้ เช่น "45=100 กลับ 50" → revPrice=50, ไม่เช่นนั้น revPrice=0
+- เลข 3 ตัว เช่น "123 = 50", "123 โต๊ด 50", "123 ต 50" → tod=50 ; ถ้าโพยเขียนว่า "ตรง", "บน", หรือมีสองราคา (ตรง x โต๊ด) ให้ใส่ราคาโต๊ดใน tod, ตั้ง unsure=true และเขียนใน note ว่าเขียนอะไรไว้
+- บรรทัดเดียวมีหลายเลขราคาเดียวกัน เช่น "12 34 56 = 100x100" ให้แยกเป็นหลายรายการ
+- "19 ประตู", "รูด", "รูดหน้า/รูดหลัง" ให้แตกเป็นเลข 2 ตัวทุกตัว ตั้ง unsure=true และ note บอกว่าแตกมาจากอะไร
+- ราคาเขียนเป็น 1k/1พัน = 1000 ; เครื่องหมาย , ในราคาไม่ใช่ตัวคั่นรายการ
+- ข้ามบรรทัดที่ไม่ใช่การซื้อ (ชื่อ, ทักทาย, ยอดรวม, เวลา, งวด)
+
+ถ้าตัวเลขหรือราคาตัวใดอ่านไม่ชัด ให้เดาค่าที่น่าจะเป็นที่สุด แล้วตั้ง unsure=true และบอกใน note ว่าตัวไหนไม่ชัด (เช่น "หลักที่สองอาจเป็น 1 หรือ 7")
+ห้ามแต่งรายการที่ไม่มีในภาพ เรียงตามลำดับในภาพ
+
+ตอบเป็น JSON อย่างเดียว รูปแบบ:
+{"lines":[{"n":"45","top":100,"bot":50,"tod":0,"rev":false,"revPrice":0,"raw":"45=100x50","unsure":false,"note":""}]}
+- n เป็นข้อความ 2 หรือ 3 หลัก (คงเลข 0 ข้างหน้า)
+- top/bot ใช้กับเลข 2 ตัว, tod ใช้กับเลข 3 ตัว, ช่องที่ไม่มีให้ใส่ 0
+- raw คือข้อความในโพยตามที่เห็น
+- ถ้าไม่พบรายการเลยให้ตอบ {"lines":[]}`;
+const escH=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IR={imgs:[], rows:[], sel:null, ctl:null, seq:0, busy:false};
+let samplePromise=null;
+const getSample=()=>{ if(!samplePromise) samplePromise=(window.claude&&claude.use)?claude.use('sample'):Promise.resolve(null); return samplePromise; };
+(async()=>{ const s=await getSample(); if(!s) return; try{ const lim=await s.limits(); if(lim&&lim.images) $('imgBtn').hidden=false; }catch(e){} })();
+const irNum=v=>{ const n=Math.round(+String(v??'').replace(/[,\s]/g,'')); return n>0?n:0; };
+const irValid=r=>(r.n.length===2&&(r.top>0||r.bot>0))||(r.n.length===3&&r.tod>0);
+function irExpand(){
+  const ts=Date.now(), out=[];
+  for (const r of IR.rows){ if(!irValid(r)) continue;
+    if (r.n.length===3){ out.push([uid(),r.n,'tod',r.tod,ts]); continue; }
+    if (r.rev){ const rn=r.n[1]+r.n[0]; if(r.top) out.push([uid(),rn,'top',r.revPrice||r.top,ts]); if(r.bot) out.push([uid(),rn,'bot',r.revPrice||r.bot,ts]); }
+    if (r.top) out.push([uid(),r.n,'top',r.top,ts]); if (r.bot) out.push([uid(),r.n,'bot',r.bot,ts]);
   }
-  return total+(cur||0);
+  return out;
 }
-function parseVoice(raw){
-  let t=String(raw||'').replace(/[๐-๙]/g,c=>'๐๑๒๓๔๕๖๗๘๙'.indexOf(c)).replace(/(\d),(\d)/g,'$1$2')
-    .replace(/บาท/g,' ').replace(/ตัว/g,' ').replace(/โต้ด|โตด|ต๊อด|ต็อด|โต๊ต/g,'โต๊ด').replace(/คูณ|x|\*/gi,' ');
-  const re=new RegExp('(บน|ล่าง|กลับ|โต๊ด)|(\\d+)|((?:'+TH_W.source+')+)','g');
-  const toks=[]; let m;
-  while((m=re.exec(t))){ if(m[1]) toks.push({k:m[1]}); else if(m[2]) toks.push({a:m[2]}); else toks.push({w:thWords(m[3])}); }
-  const firstK=toks.findIndex(x=>x.k);
-  let n='', rest;
-  const pre=firstK<0?toks:toks.slice(0,firstK);
-  if (firstK>=0){
-    for (const x of pre){ if(x.a) n+=x.a; else if(x.w){ n+= x.w.some(w=>w in TH_M) ? String(thValue(x.w)).padStart(2,'0') : x.w.map(w=>TH_D[w]).join(''); } }
-    rest=toks.slice(firstK);
-  } else {
-    // no keyword: 3-digit number then price
-    rest=[]; let i=0;
-    if (pre[0]&&pre[0].a){ while(i<pre.length&&pre[i].a&&n.length<3){ n+=pre[i].a; i++; } rest=pre.slice(i); }
-    else if (pre[0]&&pre[0].w){
-      const ws=pre.flatMap((x,j)=>x.w?x.w.map(w=>({w,j})):[{a:x.a,j}]); let k=0;
-      while(k<ws.length&&n.length<3&&ws[k].w&&(ws[k].w in TH_D)&&!(ws[k+1]&&ws[k+1].w&&(ws[k+1].w in TH_M))){ n+=TH_D[ws[k].w]; k++; }
-      const left=ws.slice(k); rest=[];
-      for(const x of left){ if(x.a) rest.push({a:x.a}); else { const L=rest[rest.length-1]; if(L&&L.w) L.w.push(x.w); else rest.push({w:[x.w]}); } }
-    }
+function irOpen(){
+  if ($('modalRoot').innerHTML && !document.getElementById('irRoot')) return;
+  if (!document.getElementById('irRoot')){
+    if (IR.ctl) IR.ctl.abort(); for(const im of IR.imgs) URL.revokeObjectURL(im.url); IR.imgs=[]; IR.rows=[]; IR.sel=null; IR.seq=0; IR.busy=false;
+    openModal(`<div id="irRoot"><h2>อ่านจากภาพ</h2>
+      <div class="irstatus" id="irStatus"></div>
+      <div class="ir">
+        <div><div class="irthumbs" id="irThumbs"></div><div class="irimg" id="irImg"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center"><button class="btn" id="irMore">+ เพิ่มภาพ</button><button class="btn" id="irStop" hidden>หยุดอ่าน</button><label class="chk"><input type="checkbox" id="irDeep"> อ่านละเอียด (ลายมือ)</label></div></div>
+        <div><div class="irtw"><table class="irt"><thead><tr><th>ภาพ</th><th>เลข</th><th>2 ตัวบน</th><th>2 ตัวล่าง</th><th>3 ตัวโต๊ด</th><th>กลับ</th><th>ราคากลับ</th><th>ข้อความในโพย</th><th></th></tr></thead><tbody id="irRows"></tbody></table></div>
+          <div class="irsum" id="irSum"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">แถวสีเหลือง = อ่านไม่ชัด ตรวจกับภาพ · แถวสีแดง = ไม่ครบ จะไม่ลงรายการ · ราคากลับเว้นว่าง = ราคาเดียวกับเลขหลัก</div></div>
+      </div>
+      <div class="actions"><button class="btn" id="irAdd">+ เพิ่มแถว</button><span style="flex:1"></span><button class="btn" id="irCancel">ยกเลิก</button><button class="btn primary" id="irOk">ลงรายการ</button></div></div>`);
+    document.querySelector('#modalRoot .modal').classList.add('wide');
+    try{ $('irDeep').checked=localStorage.getItem('ir-deep')!=='0'; }catch(e){ $('irDeep').checked=true; }
+    $('irDeep').onchange=()=>{ try{ localStorage.setItem('ir-deep',$('irDeep').checked?'1':'0'); }catch(e){} };
+    $('irMore').onclick=()=>{ $('imgFile').value=''; $('imgFile').click(); };
+    $('irStop').onclick=()=>IR.ctl&&IR.ctl.abort();
+    $('irCancel').onclick=irClose;
+    $('irAdd').onclick=()=>{ IR.rows.push({id:uid(),img:0,n:'',top:0,bot:0,tod:0,rev:false,revPrice:0,raw:'พิมพ์เอง',note:'',unsure:false}); irRenderRows(); const tr=$('irRows').lastElementChild; tr&&tr.querySelector('input.n').focus(); };
+    $('irOk').onclick=()=>{ const rows=irExpand(); if(!rows.length){ toast('ยังไม่มีรายการที่ครบ'); return; } const n=rows.length; irClose(); finishCommit(rows); toast('ลงรายการจากภาพ '+n+' รายการแล้ว'); };
+    $('irImg').onclick=()=>{ const im=$('irImg').querySelector('img'); if(im) im.style.width=im.style.width==='200%'?'100%':'200%'; };
+    $('irThumbs').onclick=e=>{ const b=e.target.closest('[data-i]'); if(b) irSelect(+b.dataset.i); };
+    $('irRows').addEventListener('input',irEdit);
+    $('irRows').addEventListener('click',e=>{ const d=e.target.closest('[data-del]'); if(d){ IR.rows=IR.rows.filter(r=>r.id!==d.dataset.del); irRenderRows(); return; } const b=e.target.closest('[data-img]'); if(b) irSelect(+b.dataset.img); });
+    $('irRows').addEventListener('keydown',e=>{ if(e.key!=='Enter'||e.target.tagName!=='INPUT') return; e.preventDefault(); const ins=[...$('irRows').querySelectorAll('input:not([disabled])')]; const i=ins.indexOf(e.target); if(ins[i+1]){ ins[i+1].focus(); ins[i+1].select&&ins[i+1].select(); } });
   }
-  if (!/^\d{2,3}$/.test(n)) return {err:'ไม่ได้ยินเลข 2 หรือ 3 หลัก'};
-  const P={top:0,bot:0,tod:0}, rev=new Set(); let pend=[], pendRev=false, assigned=[];
-  const merged=[]; for(const x of rest){ const L=merged[merged.length-1]; if(x.w&&L&&L.w) L.w=L.w.concat(x.w); else merged.push(x.w?{w:x.w.slice()}:x); }
-  for (const x of merged){
-    if (x.k==='บน') pend.push('top'); else if (x.k==='ล่าง') pend.push('bot'); else if (x.k==='โต๊ด') pend.push('tod');
-    else if (x.k==='กลับ'){ if(pend.length) pendRev=true; else assigned.forEach(tp=>rev.add(tp)); }
-    else { const v=x.a?+x.a:thValue(x.w); if(!(v>0)) continue;
-      let ts=pend.length?pend:(n.length===3?['tod']:assigned.length?assigned:[]);
-      if (!ts.length) return {err:'ไม่ได้ยินว่าเป็น บน หรือ ล่าง'};
-      ts.forEach(tp=>{ P[tp]=v; if(pendRev) rev.add(tp); }); assigned=Array.from(new Set(assigned.concat(ts))); pend=[]; pendRev=false; }
-  }
-  if (n.length===3){ if(!P.tod) return {err:'ไม่ได้ยินราคาโต๊ด'}; return {n,P:{top:0,bot:0,tod:P.tod},rev:new Set()}; }
-  if (!P.top && !P.bot) return {err:'ไม่ได้ยินราคา'};
-  P.tod=0; return {n,P,rev:new Set([...rev].filter(tp=>tp!=='tod'&&P[tp]))};
+  irRenderThumbs(); irRenderRows();
 }
-function voiceRows(r){
-  const ts=Date.now(), rows=[];
-  if (r.n.length===3){ rows.push([uid(),r.n,'tod',r.P.tod,ts]); return rows; }
-  const rn=r.n[1]+r.n[0];
-  for (const tp of ['top','bot']) if (r.P[tp] && r.rev.has(tp)) rows.push([uid(),rn,tp,r.P[tp],ts]);
-  for (const tp of ['top','bot']) if (r.P[tp]) rows.push([uid(),r.n,tp,r.P[tp],ts]);
-  return rows;
+function irClose(){ if(IR.ctl) IR.ctl.abort(); for(const im of IR.imgs) URL.revokeObjectURL(im.url); IR.imgs=[]; IR.rows=[]; IR.sel=null; IR.seq=0; closeModal(); resetEntry(); }
+function irRenderThumbs(){
+  const st={wait:'รออ่าน',run:'กำลังอ่าน…',done:'',err:'ไม่สำเร็จ'};
+  $('irThumbs').innerHTML=IR.imgs.map(im=>`<button data-i="${im.no}" class="${im.no===IR.sel?'sel':''} ${im.status}">ภาพ ${im.no}${im.status==='done'?' · '+im.count+' บรรทัด':' · '+st[im.status]}</button>`).join('');
+  const im=IR.imgs.find(x=>x.no===IR.sel); $('irImg').innerHTML=im?`<img src="${im.url}" alt="ภาพโพย ${im.no}">`:'';
 }
-let voicePending=null;
-function showParsed(html,err){ const el=$('vParsed'); el.hidden=!html; el.className='vparsed'+(err?' err':''); el.innerHTML=html||''; }
-function applyVoice(text){
-  $('vHeard').textContent='ได้ยิน: “'+text+'”';
-  const r=parseVoice(text);
-  if (r.err){ voicePending=null; showParsed(r.err+' · กด F4 พูดใหม่',true); return; }
-  resetEntry();
-  numIn.value=r.n; setMode(r.n.length===3?'three':'two');
-  if (r.n.length===3) pTod.value=r.P.tod; else { pTop.value=r.P.top||''; pBot.value=r.P.bot||''; const rp=[...r.rev].map(tp=>r.P[tp]); pRev.value=rp.length?rp[0]:''; }
-  const rows=voiceRows(r); voicePending=rows;
-  const L={tod:'โต๊ด',top:'บน',bot:'ล่าง'};
-  showParsed(rows.slice().reverse().map(([,n,tp,a])=>`${n} ${L[tp]} ${fmt(a)}`).join(' · ')+' <small>กด Enter ลงรายการ · Esc ยกเลิก</small>');
-  numIn.focus();
+function irSelect(no){ IR.sel=no; irRenderThumbs(); }
+function irRowHTML(r){
+  const three=r.n.length===3, two=r.n.length===2;
+  return `<tr data-id="${r.id}" class="${!irValid(r)?'bad':r.unsure?'unsure':''}"><td>${r.img?`<button class="x" data-img="${r.img}" style="font-family:var(--mono);font-weight:600">${r.img}</button>`:'–'}</td>
+    <td><input type="text" class="n" data-f="n" value="${escH(r.n)}" inputmode="numeric" maxlength="3" aria-label="เลข"></td>
+    <td><input type="text" data-f="top" value="${r.top||''}" inputmode="numeric" ${three?'disabled':''} aria-label="2 ตัวบน"></td>
+    <td><input type="text" data-f="bot" value="${r.bot||''}" inputmode="numeric" ${three?'disabled':''} aria-label="2 ตัวล่าง"></td>
+    <td><input type="text" data-f="tod" value="${r.tod||''}" inputmode="numeric" ${two?'disabled':''} aria-label="3 ตัวโต๊ด"></td>
+    <td><input type="checkbox" data-f="rev" ${r.rev?'checked':''} ${three?'disabled':''} aria-label="กลับ"></td>
+    <td><input type="text" data-f="revPrice" value="${r.revPrice||''}" inputmode="numeric" placeholder="=" ${three?'disabled':''} aria-label="ราคากลับ"></td>
+    <td class="raw">${escH(r.raw)}${r.note?`<em>${escH(r.note)}</em>`:''}</td><td><button class="x" data-del="${r.id}" aria-label="ลบแถว">✕</button></td></tr>`;
 }
-document.addEventListener('keydown',e=>{
-  if (!voicePending || $('modalRoot').innerHTML) return;
-  if (e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); const rows=voicePending; voicePending=null; showParsed(''); finishCommit(rows); }
-  else if (e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); voicePending=null; showParsed(''); resetEntry(); }
-},true);
-for (const el of [numIn,pTop,pBot,pTod,pRev]) el.addEventListener('input',()=>{ if(voicePending){ voicePending=null; showParsed(''); } });
-(function initVoice(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if (!SR || window.claude) return;
-  $('voiceBar').hidden=false;
-  let rec=null, listening=false, finalTxt='', interim='';
-  function start(){
-    if (listening) return;
+function irRenderRows(){
+  $('irRows').innerHTML=IR.rows.length?IR.rows.map(irRowHTML).join(''):'<tr><td colspan="9" style="padding:24px;color:var(--muted)">'+(IR.busy?'กำลังอ่านภาพ…':'ยังไม่มีรายการ')+'</td></tr>';
+  irSummary();
+}
+function irSummary(){
+  const ex=irExpand(), s={tod:0,top:0,bot:0}; for(const r of ex) s[r[2]]+=r[3];
+  const un=IR.rows.filter(r=>r.unsure).length, bad=IR.rows.filter(r=>!irValid(r)).length;
+  $('irSum').innerHTML=`<span>จะลง <b>${fmt(ex.length)}</b> รายการ</span><span>3 ตัวโต๊ด <b>${fmt(s.tod)}</b></span><span>2 ตัวบน <b>${fmt(s.top)}</b></span><span>2 ตัวล่าง <b>${fmt(s.bot)}</b></span>${un?`<span style="color:var(--pend)">ตรวจ ${un} แถวสีเหลือง</span>`:''}${bad?`<span style="color:var(--over)">${bad} แถวไม่ครบ</span>`:''}`;
+  $('irOk').textContent=ex.length?`ลงรายการ ${fmt(ex.length)} รายการ`:'ลงรายการ';
+}
+function irEdit(e){
+  const el=e.target, tr=el.closest('tr'), r=tr&&IR.rows.find(x=>x.id===tr.dataset.id); if(!r||!el.dataset.f) return;
+  const f=el.dataset.f;
+  if (f==='rev') r.rev=el.checked;
+  else if (f==='n'){ const v=el.value.replace(/\D/g,'').slice(0,3); if(v!==el.value) el.value=v; r.n=v;
+    for(const k of ['top','bot','rev','revPrice']) tr.querySelector(`[data-f=${k}]`).disabled=v.length===3; tr.querySelector('[data-f=tod]').disabled=v.length===2; }
+  else { const v=el.value.replace(/\D/g,'').slice(0,7); if(v!==el.value) el.value=v; r[f]=+v||0; }
+  r.unsure=false; tr.className=!irValid(r)?'bad':''; irSummary();
+}
+async function irRead(){
+  if (IR.busy) return;
+  const s=await getSample(); if(!s) return;
+  IR.busy=true; $('irStop').hidden=false; IR.ctl=new AbortController(); const ctl=IR.ctl;
+  for (const im of IR.imgs.filter(x=>x.status==='wait')){
+    if (ctl.signal.aborted || !document.getElementById('irRoot')) break;
+    im.status='run'; IR.sel=im.no; irRenderThumbs(); $('irStatus').className='irstatus'; $('irStatus').textContent=`กำลังอ่านภาพ ${im.no} … (ภาพละประมาณ 10–60 วินาที)`;
     try{
-      rec=new SR(); rec.lang='th-TH'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
-      finalTxt=''; interim='';
-      rec.onresult=ev=>{ interim=''; for(let i=ev.resultIndex;i<ev.results.length;i++){ const tx=ev.results[i][0].transcript; if(ev.results[i].isFinal) finalTxt+=tx+' '; else interim+=tx; } $('vHeard').textContent='กำลังฟัง: '+(finalTxt+interim); };
-      rec.onerror=ev=>{ const msg={'not-allowed':'ยังไม่ได้อนุญาตไมโครโฟน กดรูปกุญแจข้างแถบที่อยู่เว็บเพื่ออนุญาต','no-speech':'ไม่ได้ยินเสียง ลองพูดใหม่','network':'ต้องต่ออินเทอร์เน็ตเพื่อฟังเสียง','audio-capture':'ไม่พบไมโครโฟน'}[ev.error]; if(msg) showParsed(msg,true); };
-      rec.onend=()=>{ listening=false; $('vBtn').classList.remove('on'); $('vBtnTxt').textContent='กดค้าง F4 แล้วพูด'; const tx=(finalTxt+interim).trim(); if(tx) applyVoice(tx); };
-      rec.start(); listening=true; voicePending=null; showParsed('');
-      $('vBtn').classList.add('on'); $('vBtnTxt').textContent='กำลังฟัง… ปล่อยเพื่อจบ'; $('vHeard').textContent='กำลังฟัง…';
-    }catch(err){ showParsed('เริ่มฟังเสียงไม่ได้ ลองใหม่',true); }
+      const data=await s.json(IR_PROMPT,{images:[im.file],signal:ctl.signal,modelTier:$('irDeep').checked?'complex':'default'});
+      const lines=Array.isArray(data&&data.lines)?data.lines:[];
+      for (const l of lines) IR.rows.push({id:uid(),img:im.no,n:String(l.n??'').replace(/\D/g,'').slice(0,3),top:irNum(l.top),bot:irNum(l.bot),tod:irNum(l.tod),rev:!!l.rev,revPrice:irNum(l.revPrice),raw:String(l.raw??'').slice(0,120),note:String(l.note??'').slice(0,160),unsure:!!l.unsure});
+      im.status='done'; im.count=lines.length; if(document.getElementById('irRoot')) irRenderRows();
+    }catch(e){
+      const code=e&&e.code;
+      if (code==='cancelled'){ im.status='wait'; break; }
+      im.status='err';
+      if (document.getElementById('irRoot')){ $('irStatus').className='irstatus err'; $('irStatus').textContent=`ภาพ ${im.no}: `+({not_granted:'ยังไม่ได้อนุญาตให้ Claude อ่านภาพ',sampling_disabled:'บัญชีนี้ใช้ Claude อ่านภาพไม่ได้',rate_limited:'เรียกใช้ถี่เกินไป รอสักครู่แล้วเพิ่มภาพใหม่',image_rejected:'ไฟล์ภาพใช้ไม่ได้ ลองภาพอื่น',invalid_json:'อ่านผลไม่ได้ ลองเพิ่มภาพนี้ใหม่',refused:'อ่านภาพนี้ไม่ได้'}[code]||'อ่านไม่สำเร็จ ลองเพิ่มภาพนี้ใหม่'); }
+      if (['not_granted','sampling_disabled','rate_limited'].includes(code)) break;
+    }
+    if (document.getElementById('irRoot')) irRenderThumbs();
   }
-  function stop(){ if(listening&&rec){ try{ rec.stop(); }catch(e){} } }
-  document.addEventListener('keydown',e=>{ if(e.key==='F4'){ e.preventDefault(); if(!e.repeat) start(); } });
-  document.addEventListener('keyup',e=>{ if(e.key==='F4'){ e.preventDefault(); stop(); } });
-  const b=$('vBtn');
-  b.addEventListener('pointerdown',e=>{ e.preventDefault(); start(); });
-  b.addEventListener('pointerup',stop); b.addEventListener('pointerleave',stop);
-})();
+  IR.busy=false;
+  if (document.getElementById('irRoot')){ $('irStop').hidden=true; irRenderRows(); if($('irStatus').className!=='irstatus err') $('irStatus').textContent=IR.rows.length?'อ่านเสร็จแล้ว ตรวจแถวสีเหลืองกับภาพก่อนกด “ลงรายการ”':'ไม่พบรายการในภาพ'; }
+}
+function irAddFiles(files){
+  if ($('imgBtn').hidden) return;
+  const ok=[...files].filter(f=>/^image\/(jpeg|png|webp|gif)$/.test(f.type));
+  if (!ok.length){ toast('รองรับไฟล์ภาพ JPG, PNG, WebP, GIF'); return; }
+  irOpen();
+  for (const f of ok){ const im={no:++IR.seq,file:f,url:URL.createObjectURL(f),status:'wait'}; IR.imgs.push(im); IR.sel=im.no; }
+  irRenderThumbs(); irRenderRows(); irRead();
+}
+$('imgBtn').addEventListener('click',()=>{ $('imgFile').value=''; $('imgFile').click(); });
+$('imgFile').addEventListener('change',e=>irAddFiles(e.target.files));
+document.addEventListener('paste',e=>{
+  const fs=[...(e.clipboardData&&e.clipboardData.items||[])].filter(i=>i.kind==='file'&&/^image\//.test(i.type)).map(i=>i.getAsFile()).filter(Boolean);
+  if (fs.length && !$('imgBtn').hidden){ e.preventDefault(); irAddFiles(fs); }
+});
 
 renderAll();
 load();
